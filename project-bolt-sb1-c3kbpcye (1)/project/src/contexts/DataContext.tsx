@@ -578,3 +578,216 @@ export function useData() {
   }
   return context;
 }
+
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+
+// Veri Modelleri
+interface Clinic {
+  id: string;
+  name: string;
+  address?: string;
+  phone?: string;
+  email?: string;
+  logo?: string;
+  currentBalance: number;
+  totalDebt: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface Doctor {
+  id: string;
+  name: string;
+  clinicId: string;
+  phone?: string;
+  email?: string;
+  photo?: string;
+  currentBalance: number;
+  totalDebt: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface InventoryItem {
+  id: string;
+  name: string;
+  quantity: number;
+  price: number;
+  supplier?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface Invoice {
+  id: string;
+  orderId: string;
+  totalAmount: number;
+  paidAmount: number;
+  status: 'pending' | 'paid' | 'partially_paid';
+  issueDate: string;
+  dueDate: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface Payment {
+  id: string;
+  doctorId: string;
+  amount: number;
+  date: string;
+  type: 'payment' | 'debt';
+  description: string;
+  invoiceNumber?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface User {
+  id: string;
+  username: string;
+  password: string;
+  role: 'admin' | 'technician' | 'accountant';
+  name: string;
+  email?: string;
+  phone?: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface DataContextType {
+  clinics: Clinic[];
+  doctors: Doctor[];
+  inventoryItems: InventoryItem[];
+  invoices: Invoice[];
+  payments: Payment[];
+  users: User[];
+  loading: boolean;
+  error: string | null;
+  addClinic: (clinic: Clinic) => void;
+  addDoctor: (doctor: Doctor) => void;
+  addInventoryItem: (item: InventoryItem) => void;
+  createInvoice: (orderId: string, totalAmount: number) => void;
+  processPayment: (invoiceId: string, amount: number) => void;
+  createUser: (user: User) => void;
+  isAdmin: (user: User) => boolean;
+}
+
+const DataContext = createContext<DataContextType | undefined>(undefined);
+
+// Context Provider
+export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  const [clinics, setClinics] = useState<Clinic[]>([]);
+  const [doctors, setDoctors] = useState<Doctor[]>([]);
+  const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [payments, setPayments] = useState<Payment[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Örnek veriler (Supabase yerine yerel verilerle çalışmak için)
+  const mockClinics = [
+    { id: '1', name: 'Dental Clinic A', currentBalance: 5000, totalDebt: 200, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }
+  ];
+
+  const mockDoctors = [
+    { id: '1', name: 'Dr. A', clinicId: '1', currentBalance: 3000, totalDebt: 100, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }
+  ];
+
+  const fetchData = () => {
+    try {
+      // Veri alma simülasyonu
+      setClinics(mockClinics);
+      setDoctors(mockDoctors);
+      setInventoryItems([]);
+      setInvoices([]);
+      setPayments([]);
+      setUsers([]);
+      setLoading(false);
+    } catch (err) {
+      setError(err.message || 'Beklenmedik bir hata oluştu');
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const addClinic = (clinic: Clinic) => {
+    setClinics((prev) => [...prev, clinic]);
+  };
+
+  const addDoctor = (doctor: Doctor) => {
+    setDoctors((prev) => [...prev, doctor]);
+  };
+
+  const addInventoryItem = (item: InventoryItem) => {
+    setInventoryItems((prev) => [...prev, item]);
+  };
+
+  const createInvoice = (orderId: string, totalAmount: number) => {
+    const invoice: Invoice = {
+      id: 'new_id',
+      orderId,
+      totalAmount,
+      paidAmount: 0,
+      status: 'pending',
+      issueDate: new Date().toISOString(),
+      dueDate: new Date(new Date().setMonth(new Date().getMonth() + 1)).toISOString(),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    setInvoices((prev) => [...prev, invoice]);
+  };
+
+  const processPayment = (invoiceId: string, amount: number) => {
+    const updatedInvoices = invoices.map((invoice) => {
+      if (invoice.id === invoiceId) {
+        const updatedStatus = invoice.paidAmount + amount >= invoice.totalAmount ? 'paid' : 'partially_paid';
+        return { ...invoice, paidAmount: invoice.paidAmount + amount, status: updatedStatus };
+      }
+      return invoice;
+    });
+    setInvoices(updatedInvoices);
+  };
+
+  const createUser = (user: User) => {
+    setUsers((prev) => [...prev, user]);
+  };
+
+  const isAdmin = (user: User) => user.role === 'admin';
+
+  return (
+    <DataContext.Provider
+      value={{
+        clinics,
+        doctors,
+        inventoryItems,
+        invoices,
+        payments,
+        users,
+        loading,
+        error,
+        addClinic,
+        addDoctor,
+        addInventoryItem,
+        createInvoice,
+        processPayment,
+        createUser,
+        isAdmin,
+      }}
+    >
+      {children}
+    </DataContext.Provider>
+  );
+};
+
+export const useData = () => {
+  const context = useContext(DataContext);
+  if (!context) {
+    throw new Error('useData must be used within a DataProvider');
+  }
+  return context;
+};
